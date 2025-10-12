@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Study Planner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* BASE & FULL-SCREEN LAYOUT (Responsive) */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow-x: hidden;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f7f6; 
+            color: #333;
+            line-height: 1.6;
+            padding: 10px; /* Reduced padding for mobile/tablet */
+            min-height: 100vh;
+        }
+        .planner-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            min-height: calc(100vh - 20px);
+            display: flex;
+            flex-direction: column;
+        }
+        header { text-align: center; margin-bottom: 20px; }
+        header h1 { color: #4CAF50; font-size: 2em; margin-bottom: 5px; }
+
+        /* General Styling */
+        h2 { font-size: 1.5em; color: #388E3C; margin-bottom: 15px; }
+        .card { padding: 15px; border-radius: 10px; background: #fff; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); margin-bottom: 20px; }
+        
+        /* Buttons */
+        .control-btn { background-color: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 0.9em; transition: background-color 0.3s, transform 0.1s; margin: 5px 0; }
+        .control-btn:hover { background-color: #43A047; transform: translateY(-1px); }
+        .control-btn:disabled { background-color: #a5d6a7; cursor: not-allowed; }
+        .tool-toggle-btn { background-color: #FF9800; margin-right: 10px; }
+        .tool-toggle-btn.active { background-color: #E65100; }
+
+        /* Tools Toggle */
+        .tools-toggle-container { margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px; display: flex; flex-wrap: wrap;}
+        .tool-content { display: none; padding: 20px; margin-top: 15px; border-radius: 10px; background: #e8f5e9; }
+        .tool-content.active { display: flex; flex-wrap: wrap; gap: 20px; }
+        
+        .timer-display { font-size: 3em; font-weight: 700; margin: 15px 0; color: #2E7D32; }
+
+        /* Drag and Drop Organizer */
+        .organizer-management-section { flex-grow: 1; }
+        .organizer-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .organizer-column {
+            background: #fcfcfc;
+            border-radius: 10px;
+            padding: 10px;
+            min-height: 250px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid #4CAF50;
+            overflow-y: auto;
+        }
+        .organizer-column:nth-child(2) { border-color: #FFC107; }
+        .organizer-column:nth-child(3) { border-color: #2196F3; }
+        .organizer-column:nth-child(4) { border-color: #F44336; }
+
+        .drag-task-item {
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            cursor: grab;
+            border-left: 5px solid #4CAF50;
+            font-size: 0.9em;
+        }
+        .drag-task-item .task-date { font-size: 0.75em; color: #777; margin-top: 3px; }
+
+        /* Sticky Notes & Flash Notes */
+        .sticky-notes-grid { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 10px; }
+        .sticky-note, .flash-note {
+            min-width: 200px;
+            height: 200px;
+            background: #fff9c4;
+            padding: 15px;
+            border-radius: 8px;
+            position: relative;
+            flex-shrink: 0;
+            font-size: 0.9em;
+        }
+        .flash-note { background: #e3f2fd; } /* Blue for flash notes */
+        .sticky-note textarea, .flash-note textarea { width: 100%; height: 100%; border: none; background: transparent; resize: none; font-family: 'Poppins', sans-serif; font-size: 1em; }
+        .note-actions button { background: none; border: none; color: #616161; cursor: pointer; padding: 3px; }
+        .add-sticky-btn, .add-flash-btn { background-color: #FFC107; color: #333; margin-top: 10px; }
+        .add-flash-btn { background-color: #2196F3; color: white; }
+
+        /* Study & Goal Section */
+        .study-goal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 15px; }
+        .progress-bar-container { background: #eee; border-radius: 5px; margin-top: 10px; }
+        .progress-bar { height: 15px; background: #4CAF50; border-radius: 5px; width: 0%; text-align: right; line-height: 15px; color: white; font-size: 0.7em; transition: width 0.5s; }
+
+        /* Theme/Mood Styling */
+        body.theme-calm { background-color: #e0f7fa; }
+        body.theme-calm .planner-container { background: #ffffff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); }
+        body.theme-calm h1, body.theme-calm h2 { color: #00bcd4; }
+        body.theme-calm .progress-bar { background: #00bcd4; }
+        
+        body.theme-focus { background-color: #fff3e0; }
+        body.theme-focus .planner-container { background: #ffffff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); }
+        body.theme-focus h1, body.theme-focus h2 { color: #ff9800; }
+        body.theme-focus .progress-bar { background: #ff9800; }
+
+        /* Responsive Design */
+        @media (max-width: 1000px) {
+            .organizer-container { grid-template-columns: repeat(2, 1fr); }
+            .study-goal-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 600px) {
+            .planner-container { padding: 10px; }
+            header h1 { font-size: 1.5em; }
+            .organizer-container { grid-template-columns: 1fr; }
+            .task-form { flex-direction: column; }
+            .sticky-notes-grid { flex-direction: column; }
+            .sticky-note, .flash-note { min-width: 100%; height: 150px; }
+        }
+    </style>
+</head>
+<body class="theme-calm">
+
+    <div class="planner-container">
+        <header>
+            <h1><i class="fas fa-brain"></i> Advanced Study Hub</h1>
+            <p id="daily-affirmation">Loading daily affirmation...</p>
+        </header>
+
+        <div class="card" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <h2><i class="fas fa-tools"></i> Study Tools & Priority</h2>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label for="theme-select" style="font-weight: 600;">Theme:</label>
+                <select id="theme-select" class="control-btn" style="width: auto; padding: 5px 10px;">
+                    <option value="calm">Calm 🌊</option>
+                    <option value="focus">Focus 🔥</option>
+                    <option value="default">Default 🌱</option>
+                </select>
+                <button id="priority-btn" class="control-btn" style="background-color: #F44336;"><i class="fas fa-exclamation-triangle"></i> Prioritize!</button>
+            </div>
+        </div>
+
+        <div class="tools-toggle-container">
+            <button id="pomodoro-toggle" class="tool-toggle-btn active"><i class="fas fa-clock"></i> Pomodoro</button>
+            <button id="music-toggle" class="tool-toggle-btn"><i class="fas fa-music"></i> Calming Music</button>
+            <button id="quotes-toggle" class="tool-toggle-btn"><i class="fas fa-quote-left"></i> Motivation</button>
+            <button id="notes-toggle" class="tool-toggle-btn"><i class="fas fa-sticky-note"></i> Notes</button>
+            <button id="techniques-toggle" class="tool-toggle-btn"><i class="fas fa-book-reader"></i> Techniques</button>
+        </div>
+
+        <div id="pomodoro-content" class="tool-content active" style="text-align: center; flex: 1;">
+            <h2>Pomodoro Timer</h2>
+            <div class="timer-display" id="timer-display">25:00</div>
+            <div class="timer-controls">
+                <button id="start-btn" class="control-btn"><i class="fas fa-play"></i> Start</button>
+                <button id="pause-btn" class="control-btn" disabled><i class="fas fa-pause"></i> Pause</button>
+                <button id="reset-btn" class="control-btn"><i class="fas fa-redo"></i> Reset</button>
+            </div>
+            <p class="timer-status" id="timer-status" style="color: #4CAF50;">Focus time!</p>
+        </div>
+
+        <div id="music-content" class="tool-content" style="flex: 1;">
+            <div style="flex: 1; text-align: center;">
+                <h2>Calming Music</h2>
+                <audio id="calm-music" loop>
+                    <source src="calm_track.mp3" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+                <button id="music-play-btn" class="control-btn" style="background-color: #2196F3;"><i class="fas fa-play"></i> Play Music</button>
+                <p class="music-status">Music is currently **Stopped**</p>
+            </div>
+        </div>
+        
+        <div id="quotes-content" class="tool-content" style="flex: 1;">
+            <div style="flex: 1; text-align: center;">
+                <h2>Study Motivation</h2>
+                <p id="quote-display" style="font-style: italic; color: #e65100; margin-bottom: 15px;">Loading an inspiring quote...</p>
+                <button id="new-quote-btn" class="control-btn quote-btn"><i class="fas fa-sync-alt"></i> New Quote</button>
+            </div>
+        </div>
+
+        <div id="notes-content" class="tool-content" style="flex-direction: column;">
+            <h2><i class="fas fa-sticky-note"></i> Quick Notes</h2>
+            <div style="margin-bottom: 20px;">
+                <h3>Sticky Notes (Quick Memos)</h3>
+                <div id="sticky-notes-grid" class="sticky-notes-grid"></div>
+                <button id="add-sticky-btn" class="control-btn add-sticky-btn"><i class="fas fa-plus"></i> Add Sticky Note</button>
+            </div>
+            <div>
+                <h3>Flash Notes (Key Concepts)</h3>
+                <div id="flash-notes-grid" class="sticky-notes-grid"></div>
+                <button id="add-flash-btn" class="control-btn add-flash-btn"><i class="fas fa-bolt"></i> Add Flash Note</button>
+            </div>
+        </div>
+
+        <div id="techniques-content" class="tool-content" style="flex-direction: column;">
+            <h2><i class="fas fa-book-reader"></i> Recommended Study Techniques</h2>
+            <div id="technique-display" style="background: #fff; padding: 15px; border-radius: 8px;">
+                <p>Click "Prioritize!" on the main screen to get a tailored recommendation, or select a technique below:</p>
+                <select id="technique-select" class="control-btn" style="width: 250px; margin-top: 10px;">
+                    <option value="pomodoro">Pomodoro Technique</option>
+                    <option value="spaced">Spaced Repetition</option>
+                    <option value="active">Active Recall</option>
+                    <option value="feynman">Feynman Technique</option>
+                </select>
+                <p id="technique-info" style="margin-top: 10px; font-style: italic;"></p>
+            </div>
+        </div>
+
+        <section class="card">
+            <h2><i class="fas fa-trophy"></i> Goals & Progress</h2>
+            <form id="goal-form" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="goal-text-input" placeholder="e.g., Complete Chapter 5" style="flex-grow: 1; padding: 8px;" required>
+                <input type="number" id="goal-target-input" placeholder="Target hours/pages" style="width: 150px; padding: 8px;" min="1" required>
+                <button type="submit" class="control-btn add-btn"><i class="fas fa-plus"></i> Set Goal</button>
+            </form>
+            <div id="goals-list" class="study-goal-grid">
+                </div>
+        </section>
+
+        <section class="task-input-section card">
+            <h2><i class="fas fa-list-ul"></i> New Task / Deadline</h2>
+            <form id="task-form" class="task-form">
+                <input type="text" id="task-input" placeholder="Enter a new study task or concept..." required>
+                <input type="date" id="task-date">
+                <select id="concept-priority" style="padding: 8px;">
+                    <option value="Low">Low Priority</option>
+                    <option value="Medium">Medium Priority</option>
+                    <option value="High">High Priority</option>
+                </select>
+                <button type="submit" class="control-btn add-btn"><i class="fas fa-plus"></i> Add Task</button>
+            </form>
+        </section>
+
+        <section class="organizer-management-section">
+            <h2><i class="fas fa-calendar-alt"></i> Drag-and-Drop Task Organizer</h2>
+            <p style="margin-bottom: 15px; color: #666;">Drag tasks into columns to schedule or categorize (Deadlines, To Do, Focus, Done).</p>
+            
+            <div class="organizer-container">
+                <div id="column-todo" class="organizer-column" data-status="To Do">
+                    <h3><i class="fas fa-clipboard-list"></i> To Do / Inbox</h3>
+                </div>
+                <div id="column-today" class="organizer-column" data-status="Today">
+                    <h3><i class="fas fa-star"></i> Focus Today</h3>
+                </div>
+                <div id="column-upcoming" class="organizer-column" data-status="Upcoming">
+                    <h3><i class="fas fa-arrow-right"></i> Upcoming / Deadlines</h3>
+                </div>
+                <div id="column-done" class="organizer-column" data-status="Done">
+                    <h3><i class="fas fa-check-double"></i> Done / Completed</h3>
+                </div>
+            </div>
+        </section>
+        
+        <footer>
+            <p>&copy; 2024 Advanced Study Hub. Happy Studying! 🚀</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const taskForm = document.getElementById('task-form');
+            const taskInput = document.getElementById('task-input');
+            const taskDateInput = document.getElementById('task-date');
+            const conceptPriorityInput = document.getElementById('concept-priority');
+            const organizerColumns = document.querySelectorAll('.organizer-column');
+            const toolToggleButtons = document.querySelectorAll('.tools-toggle-container .tool-toggle-btn');
+            const toolContents = document.querySelectorAll('.tool-content');
+            const themeSelect = document.getElementById('theme-select');
+            const priorityBtn = document.getElementById('priority-btn');
+            const dailyAffirmation = document.getElementById('daily-affirmation');
+
+            // Notes & Goals
+            const stickyNotesGrid = document.getElementById('sticky-notes-grid');
+            const addStickyBtn = document.getElementById('add-sticky-btn');
+            const flashNotesGrid = document.getElementById('flash-notes-grid');
+            const addFlashBtn = document.getElementById('add-flash-btn');
+            const goalForm = document.getElementById('goal-form');
+            const goalsList = document.getElementById('goals-list');
+
+            // Techniques
+            const techniqueSelect = document.getElementById('technique-select');
+            const techniqueInfo = document.getElementById('technique-info');
+            
+            // --- Local Storage Data Structures ---
+            let tasks = JSON.parse(localStorage.getItem('studyTasks_v3')) || [];
+            let goals = JSON.parse(localStorage.getItem('studyGoals')) || [];
+            let stickyNotes = JSON.parse(localStorage.getItem('stickyNotes')) || [];
+            let flashNotes = JSON.parse(localStorage.getItem('flashNotes')) || [];
+
+            // --- Utility Functions ---
+            const saveTasks = () => localStorage.setItem('studyTasks_v3', JSON.stringify(tasks));
+            const saveGoals = () => localStorage.setItem('studyGoals', JSON.stringify(goals));
+            const saveStickyNotes = () => localStorage.setItem('stickyNotes', JSON.stringify(stickyNotes));
+            const saveFlashNotes = () => localStorage.setItem('flashNotes', JSON.stringify(flashNotes));
+            const formatTime = (seconds) => {
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${minutes < 10 ? '0' : ''}${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+            };
+            
+            // --- 0. Core Initialization & Daily Affirmations ---
+            const affirmations = [
+                "Your focus today creates a brighter tomorrow. You've got this! 💪",
+                "Every small step you take is progress. Be proud of your effort. ✨",
+                "You are capable of learning anything you set your mind to. Believe in yourself. 🧠",
+                "Let's make today a productive and joyful study day. ☀️",
+            ];
+            const loadDailyAffirmation = () => {
+                const today = new Date().toDateString();
+                let storedAffirmation = JSON.parse(localStorage.getItem('dailyAffirmation')) || {};
+                
+                if (storedAffirmation.date !== today) {
+                    const randomIndex = Math.floor(Math.random() * affirmations.length);
+                    storedAffirmation = { date: today, text: affirmations[randomIndex] };
+                    localStorage.setItem('dailyAffirmation', JSON.stringify(storedAffirmation));
+                }
+                dailyAffirmation.textContent = storedAffirmation.text;
+            };
+
+            // --- 1. Task Management and Drag & Drop (with Priority) ---
+
+            const renderTasks = () => {
+                // Clear and reset the column headers
+                organizerColumns.forEach(col => {
+                    const originalH3 = col.querySelector('h3');
+                    const headerHtml = originalH3 ? originalH3.innerHTML : '';
+                    col.innerHTML = `<h3>${headerHtml}</h3>`;
+                });
+                
+                // Sort tasks: High priority first, then by date
+                const sortedTasks = tasks.sort((a, b) => {
+                    const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+                    const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
+                    if (priorityDiff !== 0) return priorityDiff;
+                    return new Date(a.date) - new Date(b.date);
+                });
+
+                sortedTasks.forEach((task) => {
+                    const statusKey = task.status.toLowerCase().replace(/\s/g, '');
+                    const columnId = `column-${statusKey}`;
+                    const column = document.getElementById(columnId);
+
+                    if (column) {
+                        const taskItem = document.createElement('div');
+                        taskItem.classList.add('drag-task-item');
+                        taskItem.setAttribute('draggable', 'true');
+                        taskItem.setAttribute('data-id', task.id);
+
+                        let priorityColor = '';
+                        if (task.priority === 'High') priorityColor = '#F44336'; // Red
+                        else if (task.priority === 'Medium') priorityColor = '#FFC107'; // Yellow
+                        else priorityColor = '#03A9F4'; // Blue
+
+                        taskItem.innerHTML = `
+                            <span>${task.text}</span>
+                            <span class="task-date">Due: ${task.date || 'N/A'} | Priority: ${task.priority}</span>
+                        `;
+                        
+                        // Apply styling based on status and column color
+                        if (task.status === 'Done') {
+                            taskItem.style.textDecoration = 'line-through';
+                            taskItem.style.opacity = '0.7';
+                            taskItem.style.borderLeftColor = '#F44336';
+                        } else {
+                            taskItem.style.borderLeftColor = priorityColor;
+                        }
+                        
+                        column.appendChild(taskItem);
+                    }
+                });
+
+                attachDragListeners();
+            };
+
+            const addTask = (text, date, priority) => {
+                const newTask = {
+                    id: Date.now(),
+                    text: text,
+                    date: date,
+                    priority: priority,
+                    status: 'To Do' 
+                };
+                tasks.push(newTask);
+                saveTasks();
+                renderTasks();
+            };
+
+            taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = taskInput.value.trim();
+                const date = taskDateInput.value;
+                const priority = conceptPriorityInput.value;
+                if (text) {
+                    addTask(text, date, priority);
+                    taskInput.value = '';
+                    taskDateInput.value = '';
+                    conceptPriorityInput.value = 'Low';
+                }
+            });
+
+            const attachDragListeners = () => {
+                document.querySelectorAll('.drag-task-item').forEach(item => {
+                    item.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', item.dataset.id); 
+                        setTimeout(() => item.classList.add('dragging'), 0);
+                    });
+
+                    item.addEventListener('dragend', (e) => {
+                        e.target.classList.remove('dragging');
+                    });
+                });
+
+                organizerColumns.forEach(column => {
+                    column.addEventListener('dragover', (e) => { e.preventDefault(); column.classList.add('drag-over'); });
+                    column.addEventListener('dragleave', () => { column.classList.remove('drag-over'); });
+                    column.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        column.classList.remove('drag-over');
+                        
+                        const taskId = parseInt(e.dataTransfer.getData('text/plain'));
+                        const newStatus = column.dataset.status;
+                        
+                        const taskIndex = tasks.findIndex(t => t.id === taskId);
+                        if (taskIndex !== -1) {
+                            tasks[taskIndex].status = newStatus;
+                            saveTasks();
+                            renderTasks();
+                        }
+                    });
+                });
+            };
+            
+            // --- 2. Goal Setting and Progress Tracking ---
+            const renderGoals = () => {
+                goalsList.innerHTML = '';
+                if (goals.length === 0) {
+                    goalsList.innerHTML = '<p style="color: #777;">Set your first big study goal!</p>';
+                    return;
+                }
+
+                goals.forEach((goal) => {
+                    const goalDiv = document.createElement('div');
+                    goalDiv.classList.add('card');
+                    goalDiv.style.borderLeft = `5px solid #4CAF50`;
+                    
+                    const progress = goal.progress > goal.target ? goal.target : goal.progress;
+                    const percent = goal.target > 0 ? Math.min(100, (progress / goal.target) * 100).toFixed(0) : 0;
+                    
+                    goalDiv.innerHTML = `
+                        <h4 style="margin-bottom: 5px;">${goal.text}</h4>
+                        <p style="font-size: 0.9em; color: #666;">Progress: ${goal.progress} / ${goal.target} units</p>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: ${percent}%;">
+                                ${percent > 10 ? `${percent}%` : ''}
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <input type="number" id="add-progress-${goal.id}" placeholder="Add units" min="1" style="width: 100px; padding: 5px; margin-right: 5px;">
+                            <button class="control-btn add-progress-btn" data-id="${goal.id}" style="background-color: #2196F3; padding: 5px 10px;">Log</button>
+                            <button class="control-btn delete-goal-btn" data-id="${goal.id}" style="background-color: #F44336; padding: 5px 10px;"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `;
+                    goalsList.appendChild(goalDiv);
+                });
+                
+                document.querySelectorAll('.add-progress-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const goalId = parseInt(e.target.dataset.id);
+                        const input = document.getElementById(`add-progress-${goalId}`);
+                        const amount = parseInt(input.value) || 0;
+                        if (amount > 0) {
+                            const goal = goals.find(g => g.id === goalId);
+                            if (goal) {
+                                goal.progress += amount;
+                                saveGoals();
+                                renderGoals();
+                                input.value = '';
+                            }
+                        }
+                    });
+                });
+                document.querySelectorAll('.delete-goal-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const goalId = parseInt(e.target.dataset.id);
+                        goals = goals.filter(g => g.id !== goalId);
+                        saveGoals();
+                        renderGoals();
+                    });
+                });
+            };
+
+            goalForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = document.getElementById('goal-text-input').value.trim();
+                const target = parseInt(document.getElementById('goal-target-input').value) || 0;
+                if (text && target > 0) {
+                    goals.push({ id: Date.now(), text, target, progress: 0 });
+                    saveGoals();
+                    renderGoals();
+                    goalForm.reset();
+                }
+            });
+
+            // --- 3. Notes (Sticky & Flash) ---
+            const createNoteElement = (note, isFlash) => {
+                const noteDiv = document.createElement('div');
+                noteDiv.classList.add(isFlash ? 'flash-note' : 'sticky-note');
+                noteDiv.setAttribute('data-id', note.id);
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.classList.add('note-actions');
+                actionsDiv.style.position = 'absolute';
+                actionsDiv.style.top = '5px';
+                actionsDiv.style.right = '5px';
+                actionsDiv.innerHTML = `<button class="delete-note-btn" title="Delete Note"><i class="fas fa-trash"></i></button>`;
+                
+                const textarea = document.createElement('textarea');
+                textarea.value = note.content;
+                textarea.placeholder = isFlash ? "Key Concept/Definition (e.g., Active Recall: Testing yourself on material)" : "Write a quick memo...";
+
+                // Save note content on input
+                textarea.addEventListener('input', () => {
+                    const collection = isFlash ? flashNotes : stickyNotes;
+                    const n = collection.find(item => item.id === note.id);
+                    if (n) {
+                        n.content = textarea.value;
+                        isFlash ? saveFlashNotes() : saveStickyNotes();
+                    }
+                });
+
+                // Delete button handler
+                actionsDiv.querySelector('.delete-note-btn').addEventListener('click', () => {
+                    if (confirm("Delete this note?")) {
+                        if (isFlash) {
+                            flashNotes = flashNotes.filter(n => n.id !== note.id);
+                            saveFlashNotes();
+                        } else {
+                            stickyNotes = stickyNotes.filter(n => n.id !== note.id);
+                            saveStickyNotes();
+                        }
+                        renderNotes();
+                    }
+                });
+
+                noteDiv.appendChild(actionsDiv);
+                noteDiv.appendChild(textarea);
+                return noteDiv;
+            };
+
+            const renderNotes = () => {
+                stickyNotesGrid.innerHTML = '';
+                flashNotesGrid.innerHTML = '';
+
+                if (stickyNotes.length === 0) { stickyNotesGrid.innerHTML = '<p style="color: #777;">No sticky notes yet.</p>'; }
+                stickyNotes.forEach(note => stickyNotesGrid.appendChild(createNoteElement(note, false)));
+
+                if (flashNotes.length === 0) { flashNotesGrid.innerHTML = '<p style="color: #777;">No flash notes. Use this for key concepts!</p>'; }
+                flashNotes.forEach(note => flashNotesGrid.appendChild(createNoteElement(note, true)));
+            };
+
+            addStickyBtn.addEventListener('click', () => { stickyNotes.push({ id: Date.now(), content: '' }); saveStickyNotes(); renderNotes(); });
+            addFlashBtn.addEventListener('click', () => { flashNotes.push({ id: Date.now(), content: '' }); saveFlashNotes(); renderNotes(); });
+
+
+            // --- 4. Mood Themes and Techniques ---
+            const themeMap = {
+                'default': { class: '', h1: '#4CAF50', progress: '#4CAF50' },
+                'calm': { class: 'theme-calm', h1: '#00bcd4', progress: '#00bcd4' },
+                'focus': { class: 'theme-focus', h1: '#ff9800', progress: '#ff9800' }
+            };
+            const applyTheme = (theme) => {
+                document.body.className = '';
+                document.body.classList.add(themeMap[theme].class);
+                localStorage.setItem('studyTheme', theme);
+            };
+
+            themeSelect.value = localStorage.getItem('studyTheme') || 'calm';
+            applyTheme(themeSelect.value);
+            themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
+
+            const techniqueData = {
+                'pomodoro': "Focus for 25 minutes, then take a 5-minute break. Highly effective for deep concentration!",
+                'spaced': "Review material right before you're about to forget it (e.g., 1 day, 3 days, 1 week later).",
+                'active': "Don't just re-read notes. Test yourself, explain concepts aloud, or use flashcards.",
+                'feynman': "Pretend you are teaching the concept to a child. If you can't explain it simply, you don't know it well enough."
+            };
+            techniqueInfo.textContent = techniqueData['pomodoro'];
+            techniqueSelect.addEventListener('change', (e) => { techniqueInfo.textContent = techniqueData[e.target.value]; });
+
+            priorityBtn.addEventListener('click', () => {
+                const highPriorityTasks = tasks.filter(t => t.priority === 'High' && t.status !== 'Done');
+                let rec = "Great job! All your tasks are low/medium priority, so choose the technique that feels best.";
+
+                if (highPriorityTasks.length > 0) {
+                    // Check if a high priority task is complex (long text) or needs deep focus
+                    const isComplex = highPriorityTasks.some(t => t.text.split(' ').length > 8);
+                    rec = isComplex 
+                        ? `**URGENT HIGH PRIORITY!** Focus on "${highPriorityTasks[0].text}". We recommend the **Pomodoro Technique** and **Active Recall** to maximize deep work.`
+                        : `**HIGH PRIORITY!** We recommend the **Spaced Repetition** technique for review or the **Feynman Technique** to solidify understanding.`;
+                    techniqueSelect.value = isComplex ? 'pomodoro' : 'feynman';
+                    techniqueInfo.textContent = techniqueData[techniqueSelect.value];
+                }
+                
+                alert(`Priority Recommendation: ${rec.replace(/\*\*/g, '')}`);
+            });
+
+
+            // --- 5. Tool Section Toggle ---
+            toolToggleButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.id.replace('-toggle', '-content');
+                    
+                    toolToggleButtons.forEach(btn => btn.classList.remove('active'));
+                    toolContents.forEach(content => content.classList.remove('active'));
+
+                    button.classList.add('active');
+                    document.getElementById(targetId).classList.add('active');
+                });
+            });
+
+
+            // --- 6. Pomodoro Timer Logic (Reuse from previous version) ---
+            const studyTime = 25 * 60; 
+            const breakTime = 5 * 60;  
+            let timeRemaining = studyTime;
+            let isPaused = true;
+            let interval;
+            let isStudyMode = true;
+
+            const updateTimerDisplay = () => {
+                document.getElementById('timer-display').textContent = formatTime(timeRemaining);
+                document.title = `${formatTime(timeRemaining)} - ${isStudyMode ? 'Focus' : 'Break'} | Planner`;
+            };
+
+            const runTimer = () => {
+                if (isPaused || timeRemaining <= 0) { clearInterval(interval); return; }
+                timeRemaining--;
+                updateTimerDisplay();
+
+                if (timeRemaining <= 0) {
+                    clearInterval(interval);
+                    new Audio().play().catch(() => {});
+                    
+                    if (isStudyMode) {
+                        alert("Time for a break! Take 5 minutes. ☕");
+                        timeRemaining = breakTime;
+                        isStudyMode = false;
+                        document.getElementById('timer-status').textContent = "Break time! Stretch your legs.";
+                        document.getElementById('timer-status').style.color = "#FF9800";
+                    } else {
+                        alert("Break is over! Time to focus again. 💪");
+                        timeRemaining = studyTime;
+                        isStudyMode = true;
+                        document.getElementById('timer-status').textContent = "Focus time!";
+                        document.getElementById('timer-status').style.color = "#4CAF50";
+                    }
+                    startTimer();
+                }
+            };
+
+            const startTimer = () => {
+                if (!isPaused) return;
+                isPaused = false;
+                document.getElementById('start-btn').disabled = true;
+                document.getElementById('pause-btn').disabled = false;
+                interval = setInterval(runTimer, 1000);
+                document.getElementById('timer-status').textContent = isStudyMode ? "Focus time: Running..." : "Break time: Running...";
+            };
+
+            const pauseTimer = () => {
+                if (isPaused) return;
+                isPaused = true;
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('pause-btn').disabled = true;
+                clearInterval(interval);
+                document.getElementById('timer-status').textContent = isStudyMode ? "Focus time: Paused" : "Break time: Paused";
+            };
+
+            const resetTimer = () => {
+                pauseTimer();
+                timeRemaining = studyTime;
+                isStudyMode = true;
+                updateTimerDisplay();
+                document.getElementById('timer-status').textContent = "Focus time!";
+                document.getElementById('timer-status').style.color = "#4CAF50";
+                document.getElementById('start-btn').disabled = false;
+            };
+
+            document.getElementById('start-btn').addEventListener('click', startTimer);
+            document.getElementById('pause-btn').addEventListener('click', pauseTimer);
+            document.getElementById('reset-btn').addEventListener('click', resetTimer);
+
+            // --- 7. Quotes & Music Logic (Reuse from previous version) ---
+            let isMusicPlaying = false;
+            const motivationalQuotes = [
+                "The mind is not a vessel to be filled, but a fire to be kindled. - Plutarch",
+                "Strive for progress, not perfection.",
+                "Today's efforts are tomorrow's results.",
+                "You don't have to be great to start, but you have to start to be great. - Zig Ziglar",
+                "The expert in anything was once a beginner."
+            ];
+
+            const displayRandomQuote = () => {
+                const randomIndex = Math.floor(Math.random() * motivationalQuotes.length);
+                document.getElementById('quote-display').textContent = motivationalQuotes[randomIndex];
+            };
+            document.getElementById('new-quote-btn').addEventListener('click', displayRandomQuote);
+
+            document.getElementById('music-play-btn').addEventListener('click', () => {
+                if (isMusicPlaying) {
+                    document.getElementById('calm-music').pause();
+                    isMusicPlaying = false;
+                    document.getElementById('music-play-btn').innerHTML = '<i class="fas fa-play"></i> Play Music';
+                    document.querySelector('.music-status').innerHTML = 'Music is currently **Stopped**';
+                } else {
+                    document.getElementById('calm-music').play()
+                        .then(() => {
+                            isMusicPlaying = true;
+                            document.getElementById('music-play-btn').innerHTML = '<i class="fas fa-pause"></i> Pause Music';
+                            document.querySelector('.music-status').innerHTML = 'Music is currently **Playing** 🎧';
+                        })
+                        .catch(error => {
+                            alert("Could not play music. (Error: Audio file not found or browser blocked autoplay).");
+                        });
+                }
+            });
+
+            // --- Initial Load ---
+            loadDailyAffirmation();
+            updateTimerDisplay();
+            displayRandomQuote();
+            renderTasks();
+            renderGoals();
+            renderNotes();
+        });
+    </script>
+</body>
+</html>
