@@ -182,12 +182,10 @@
         <div id="music-content" class="tool-content" style="flex: 1;">
             <div style="flex: 1; text-align: center;">
                 <h2>Calming Music</h2>
-                <audio id="calm-music" loop>
-                    <source src="calm_track.mp3" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                </audio>
+                <label>Sound <select id="sound-type"><option value="chords">Ambient chords</option><option value="rain">Soft rain</option><option value="waves">Ocean swell</option><option value="brown">Brown noise</option><option value="bells">Wind chimes</option></select></label>
+                <label>Volume <input id="volume" type="range" min="0" max="1" step=".01" value=".3"></label>
                 <button id="music-play-btn" class="control-btn" style="background-color: #2196F3;"><i class="fas fa-play"></i> Play Music</button>
-                <p class="music-status">Music is currently **Stopped**</p>
+                <p class="music-status" id="audio-status" role="status"></p>
             </div>
         </div>
         
@@ -374,10 +372,11 @@
                         else priorityColor = '#03A9F4'; // Blue
 
                         taskItem.innerHTML = `
-                            <span>${task.text}</span>
+                            <span></span>
                             <span class="task-date">Due: ${task.date || 'N/A'} | Priority: ${task.priority}</span>
                         `;
                         
+                        taskItem.firstElementChild.textContent = task.text;
                         // Apply styling based on status and column color
                         if (task.status === 'Done') {
                             taskItem.style.textDecoration = 'line-through';
@@ -439,10 +438,10 @@
                         e.preventDefault();
                         column.classList.remove('drag-over');
                         
-                        const taskId = parseInt(e.dataTransfer.getData('text/plain'));
+                        const taskId = e.dataTransfer.getData('text/plain');
                         const newStatus = column.dataset.status;
                         
-                        const taskIndex = tasks.findIndex(t => t.id === taskId);
+                        const taskIndex = tasks.findIndex(t => String(t.id) === taskId);
                         if (taskIndex !== -1) {
                             tasks[taskIndex].status = newStatus;
                             saveTasks();
@@ -469,7 +468,7 @@
                     const percent = goal.target > 0 ? Math.min(100, (progress / goal.target) * 100).toFixed(0) : 0;
                     
                     goalDiv.innerHTML = `
-                        <h4 style="margin-bottom: 5px;">${goal.text}</h4>
+                        <h4 style="margin-bottom: 5px;"></h4>
                         <p style="font-size: 0.9em; color: #666;">Progress: ${goal.progress} / ${goal.target} units</p>
                         <div class="progress-bar-container">
                             <div class="progress-bar" style="width: ${percent}%;">
@@ -482,16 +481,17 @@
                             <button class="control-btn delete-goal-btn" data-id="${goal.id}" style="background-color: #F44336; padding: 5px 10px;"><i class="fas fa-trash"></i></button>
                         </div>
                     `;
+                    goalDiv.firstElementChild.textContent = goal.text;
                     goalsList.appendChild(goalDiv);
                 });
                 
                 document.querySelectorAll('.add-progress-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
-                        const goalId = parseInt(e.target.dataset.id);
+                        const goalId = e.currentTarget.dataset.id;
                         const input = document.getElementById(`add-progress-${goalId}`);
                         const amount = parseInt(input.value) || 0;
                         if (amount > 0) {
-                            const goal = goals.find(g => g.id === goalId);
+                            const goal = goals.find(g => String(g.id) === goalId);
                             if (goal) {
                                 goal.progress += amount;
                                 saveGoals();
@@ -503,8 +503,8 @@
                 });
                 document.querySelectorAll('.delete-goal-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
-                        const goalId = parseInt(e.target.dataset.id);
-                        goals = goals.filter(g => g.id !== goalId);
+                        const goalId = e.currentTarget.dataset.id;
+                        goals = goals.filter(g => String(g.id) !== goalId);
                         saveGoals();
                         renderGoals();
                     });
@@ -592,7 +592,7 @@
             };
             const applyTheme = (theme) => {
                 document.body.className = '';
-                document.body.classList.add(themeMap[theme].class);
+                if (themeMap[theme]?.class) document.body.classList.add(themeMap[theme].class);
                 localStorage.setItem('studyTheme', theme);
             };
 
@@ -661,7 +661,7 @@
 
                 if (timeRemaining <= 0) {
                     clearInterval(interval);
-                    new Audio().play().catch(() => {});
+
                     
                     if (isStudyMode) {
                         alert("Time for a break! Take 5 minutes. ☕");
@@ -676,6 +676,8 @@
                         document.getElementById('timer-status').textContent = "Focus time!";
                         document.getElementById('timer-status').style.color = "#4CAF50";
                     }
+                    isPaused = true;
+                    updateTimerDisplay();
                     startTimer();
                 }
             };
@@ -713,40 +715,254 @@
             document.getElementById('reset-btn').addEventListener('click', resetTimer);
 
             // --- 7. Quotes & Music Logic (Reuse from previous version) ---
-            let isMusicPlaying = false;
-            const motivationalQuotes = [
-                "The mind is not a vessel to be filled, but a fire to be kindled. - Plutarch",
-                "Strive for progress, not perfection.",
-                "Today's efforts are tomorrow's results.",
-                "You don't have to be great to start, but you have to start to be great. - Zig Ziglar",
-                "The expert in anything was once a beginner."
-            ];
+const $ = id => document.getElementById(id);
+const quoteSources = {
+  "4507": [
+    "James Allen",
+    "As a Man Thinketh"
+  ],
+  "45109": [
+    "Epictetus",
+    "The Enchiridion"
+  ],
+  "43855": [
+    "Benjamin Franklin",
+    "The Way to Wealth"
+  ],
+  "205": [
+    "Henry David Thoreau",
+    "Walden"
+  ],
+  "2680": [
+    "Marcus Aurelius",
+    "Meditations"
+  ],
+  "31622": [
+    "Helen Keller",
+    "Optimism"
+  ]
+};
 
-            const displayRandomQuote = () => {
-                const randomIndex = Math.floor(Math.random() * motivationalQuotes.length);
-                document.getElementById('quote-display').textContent = motivationalQuotes[randomIndex];
-            };
-            document.getElementById('new-quote-btn').addEventListener('click', displayRandomQuote);
+const quotations = [
+  ["4507", "A man is literally what he thinks, his character being the complete sum of all his thoughts."],
+  ["4507", "MAN'S mind may be likened to a garden, which may be intelligently cultivated or allowed to run wild"],
+  ["4507", "Good thoughts bear good fruit, bad thoughts bad fruit."],
+  ["4507", "As the reaper of his own harvest, man learns both by suffering and bliss."],
+  ["4507", "A man cannot directly choose his circumstances, but he can choose his thoughts, and so indirectly, yet surely, shape his circumstances."],
+  ["4507", "Thought is the fount of action, life, and manifestation"],
+  ["4507", "Clean thoughts make clean habits."],
+  ["4507", "UNTIL thought is linked with purpose there is no intelligent accomplishment."],
+  ["4507", "A man should conceive of a legitimate purpose in his heart, and set out to accomplish it."],
+  ["4507", "He should make this purpose the centralizing point of his thoughts."],
+  ["4507", "Having conceived of his purpose, a man should mentally mark out a straight pathway to its achievement, looking neither to the right nor the left."],
+  ["4507", "The will to do springs from the knowledge that we can do."],
+  ["4507", "A man can only rise, conquer, and achieve by lifting up his thoughts."],
+  ["4507", "Intellectual achievements are the result of thought consecrated to the search for knowledge, or for the beautiful and true in life and nature."],
+  ["4507", "Achievement, of whatever kind, is the crown of effort, the diadem of thought."],
+  ["4507", "THE dreamers are the saviours of the world."],
+  ["4507", "Humanity cannot forget its dreamers"],
+  ["4507", "He who cherishes a beautiful vision, a lofty ideal in his heart, will one day realize it."],
+  ["4507", "Dream lofty dreams, and as you dream, so shall you become."],
+  ["4507", "Your Vision is the promise of what you shall one day be"],
+  ["4507", "The greatest achievement was at first and for a time a dream."],
+  ["4507", "Dreams are the seedlings of realities."],
+  ["4507", "In all human affairs there are efforts, and there are results, and the strength of the effort is the measure of the result."],
+  ["4507", "Gifts, powers, material, intellectual, and spiritual possessions are the fruits of effort"],
+  ["4507", "The Vision that you glorify in your mind, the Ideal that you enthrone in your heart—this you will build your life by, this you will become."],
+  ["4507", "CALMNESS of mind is one of the beautiful jewels of wisdom."],
+  ["4507", "The more tranquil a man becomes, the greater is his success, his influence, his power for good."],
+  ["4507", "Who does not love a tranquil heart, a sweet-tempered, balanced life?"],
+  ["45109", "There are things which are within our power, and there are things which are beyond our power."],
+  ["45109", "Within our power are opinion, aim, desire, aversion, and, in one word, whatever affairs are our own."],
+  ["45109", "When you set about any action, remind yourself of what nature the action is."],
+  ["45109", "Upon every accident, remember to turn toward yourself and inquire what faculty you have for its use."],
+  ["45109", "Begin therefore with little things."],
+  ["45109", "Exercise, therefore, what is in your power."],
+  ["45109", "You can be unconquerable if you enter into no combat in which it is not in your own power to conquer."],
+  ["45109", "For if you once gain time and respite, you will more easily command yourself."],
+  ["45109", "Begin by prescribing to yourself some character and demeanor, such as you may preserve both alone and in company."],
+  ["45109", "Never proclaim yourself a philosopher, nor make much talk among the ignorant about your principles, but show them by actions."],
+  ["45109", "How long, then, will you delay to demand of yourself the noblest improvements, and in no instance to transgress the judgments of reason?"],
+  ["45109", "Thus Socrates became perfect, improving himself by everything, following reason alone."],
+  ["43855", "We may make these times better, if we bestir ourselves."],
+  ["205", "Here is life, an experiment to a great extent untried by me"],
+  ["205", "I determined to go into business at once, and not wait to acquire the usual capital, using such slender means as I had already got."],
+  ["205", "I will endeavor to speak a good word for the truth."],
+  ["205", "How could youths better learn to live than by at once trying the experiment of living?"],
+  ["205", "I have learned that the swiftest traveller is he that goes afoot."],
+  ["205", "We should impart our courage, and not our despair, our health and ease, and not our disease, and take care that this does not spread by contagion."],
+  ["205", "The morning wind forever blows, the poem of creation is uninterrupted"],
+  ["205", "Every morning was a cheerful invitation to make my life of equal simplicity, and I may say innocence, with Nature herself."],
+  ["205", "The morning, which is the most memorable season of the day, is the awakening hour."],
+  ["205", "To him whose elastic and vigorous thought keeps pace with the sun, the day is a perpetual morning."],
+  ["205", "Morning is when I am awake and there is a dawn in me."],
+  ["205", "To be awake is to be alive."],
+  ["205", "I know of no more encouraging fact than the unquestionable ability of man to elevate his life by a conscious endeavor."],
+  ["205", "Every man is tasked to make his life, even in its details, worthy of the contemplation of his most elevated and critical hour."],
+  ["205", "Our life is frittered away by detail."],
+  ["205", "Why should we live with such hurry and waste of life?"],
+  ["205", "Let us spend one day as deliberately as Nature, and not be thrown off the track by every nutshell and mosquito’s wing that falls on the rails."],
+  ["205", "Time is but the stream I go a-fishing in."],
+  ["205", "For what are the classics but the noblest recorded thoughts of man?"],
+  ["205", "Books must be read as deliberately and reservedly as they were written."],
+  ["205", "There are the stars, and they who can may read them."],
+  ["205", "The symbol of an ancient man’s thought becomes a modern man’s speech."],
+  ["205", "I aspire to be acquainted with wiser men than this our Concord soil has produced, whose names are hardly known here."],
+  ["2680", "Give thyself leisure to learn some good thing, and cease roving and wandering to and fro."],
+  ["2680", "In the morning when thou findest thyself unwilling to rise, consider with thyself presently, it is to go about a man's work that I am stirred up."],
+  ["2680", "If anybody shall reprove me, and shall make it apparent unto me, that in any either opinion or action of mine I do err, I will most gladly retract."],
+  ["2680", "Thou therefore teach them better, and make it appear unto them: but be not thou angry with them."],
+  ["2680", "The art of true living in this world is more like a wrestler's, than a dancer's practice."],
+  ["2680", "All men are made one for another: either then teach them better, or bear with them."],
+  ["2680", "Do what thy nature doth now require."],
+  ["2680", "But begin this course with thyself first of all, and diligently examine thyself concerning whatsoever thou doest."],
+  ["2680", "Ever maintain thine own purpose and resolution free from all compulsion and necessity."],
+  ["2680", "Remember that all is but opinion, and all opinion depends of the mind."],
+  ["31622", "Night fled before the day of thought, and love and joy and hope came up in a passion of obedience to knowledge."],
+  ["31622", "With the first word I used intelligently, I learned to live, to think, to hope."],
+  ["31622", "I have had a glimpse of the shore, and can now live by the hope of reaching it."],
+  ["31622", "I try to increase the power God has given me to see the best in everything and every one, and make that Best a part of my life."],
+  ["31622", "Doubt and mistrust are the mere panic of timid imagination, which the steadfast heart will conquer, and the large mind transcend."],
+  ["31622", "Nay, the desire and will to work is optimism itself."],
+  ["31622", "I, too, can work, and because I love to labor with my head and my hands, I am an optimist in spite of all."],
+  ["31622", "But I have found out that though the ways in which I can make myself useful are few, yet the work open to me is endless."],
+  ["31622", "It is my service to think how I can best fulfil the demands that each day makes upon me, and to rejoice that others can do what I cannot."],
+  ["31622", "All through the years I have spent in college, my reading has been a continuous discovery of good."],
+  ["31622", "Philosophy gives to the mind the prerogative of seeing truth, and bears us into a realm where I, who am blind, am not different from you who see."],
+  ["31622", "The history of man is an epic of progress."],
+  ["31622", "The test of all beliefs is their practical effect in life."],
+  ["31622", "Thus the optimist believes, attempts, achieves."],
+  ["43855", "Lost time is never found again"],
+  ["43855", "Sloth makes all things difficult, but industry all easy"],
+  ["43855", "Drive thy business, let not that drive thee"],
+  ["43855", "There are no gains without pains"],
+  ["43855", "Diligence is the mother of good luck"],
+  ["43855", "Work while it is called to-day, for you know not how much you may be hindered to-morrow."],
+  ["43855", "One to-day is worth two to-morrows"],
+  ["43855", "Never leave that till to-morrow, which you can do to-day."],
+  ["43855", "Constant dropping wears away stones"],
+  ["43855", "little strokes fell great oaks."],
+  ["43855", "Employ thy time well, if thou meanest to gain leisure"],
+  ["43855", "since thou art not sure of a minute, throw not away an hour."],
+  ["43855", "Leisure is time for doing something useful"],
+  ["43855", "A life of leisure and a life of laziness are two things."]
+];
+let quoteDeck = [];
+let lastQuote;
+function displayRandomQuote() {
+  if (!quoteDeck.length) {
+    quoteDeck = quotations.map((_, i) => i);
+    for (let i = quoteDeck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [quoteDeck[i], quoteDeck[j]] = [quoteDeck[j], quoteDeck[i]];
+    }
+    const end = quoteDeck.length - 1;
+    if (quoteDeck[end] === lastQuote) {
+      [quoteDeck[0], quoteDeck[end]] = [quoteDeck[end], quoteDeck[0]];
+    }
+  }
+  lastQuote = quoteDeck.pop();
+  const [source, text] = quotations[lastQuote];
+  const [author, title] = quoteSources[source];
+  $("quote-display").textContent = "“" + text + "” — " + author + ", " + title;
+}
+$("new-quote-btn").onclick = displayRandomQuote;
+let audio = null;
+let gain;
+let soundLoop;
+const soundType = $("sound-type");
+const volume = $("volume");
+soundType.value = localStorage.getItem("studySound") || "chords";
+if (!soundType.value) soundType.value = "chords";
+volume.value = localStorage.getItem("studyVolume") ?? ".3";
 
-            document.getElementById('music-play-btn').addEventListener('click', () => {
-                if (isMusicPlaying) {
-                    document.getElementById('calm-music').pause();
-                    isMusicPlaying = false;
-                    document.getElementById('music-play-btn').innerHTML = '<i class="fas fa-play"></i> Play Music';
-                    document.querySelector('.music-status').innerHTML = 'Music is currently **Stopped**';
-                } else {
-                    document.getElementById('calm-music').play()
-                        .then(() => {
-                            isMusicPlaying = true;
-                            document.getElementById('music-play-btn').innerHTML = '<i class="fas fa-pause"></i> Pause Music';
-                            document.querySelector('.music-status').innerHTML = 'Music is currently **Playing** 🎧';
-                        })
-                        .catch(error => {
-                            alert("Could not play music. (Error: Audio file not found or browser blocked autoplay).");
-                        });
-                }
-            });
+function playTones(context, output, bells) {
+  const chords = [[196,246.94,293.66],[164.81,196,246.94],[174.61,220,261.63],[146.83,185,220]];
+  let index = 0;
+  function phrase() {
+    const notes = bells ? [[523.25,659.25,783.99,880][Math.floor(Math.random()*4)]] : chords[index];
+    for (const frequency of notes) {
+      const start = context.currentTime;
+      const tone = context.createOscillator();
+      const envelope = context.createGain();
+      tone.frequency.value = frequency;
+      envelope.gain.setValueAtTime(0,start);
+      envelope.gain.linearRampToValueAtTime(bells ? .16 : .075,start+(bells ? .02 : .7));
+      envelope.gain.exponentialRampToValueAtTime(.0001,start+4.4);
+      tone.connect(envelope).connect(output);
+      tone.start(); tone.stop(start+4.5);
+      tone.onended = () => { tone.disconnect(); envelope.disconnect(); };
+    }
+    index = (index + 1) % chords.length;
+  }
+  phrase();
+  soundLoop = setInterval(phrase,bells ? 1750 : 4200);
+}
 
+function playNoise(context, output, kind) {
+  const buffer = context.createBuffer(1,context.sampleRate*4,context.sampleRate);
+  const data = buffer.getChannelData(0);
+  let previous = 0;
+  for (let i=0; i<data.length; i++) {
+    const white = Math.random()*2-1;
+    previous = (previous + .02*white)/1.02;
+    data[i] = kind === "brown" ? previous*4 : white*.4;
+  }
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+  const filter = context.createBiquadFilter();
+  filter.type = kind === "rain" ? "highpass" : "lowpass";
+  filter.frequency.value = kind === "rain" ? 1000 : 750;
+  const level = context.createGain();
+  level.gain.value = kind === "waves" ? .48 : .8;
+  source.connect(filter).connect(level).connect(output);
+  if (kind === "waves") {
+    const swell = context.createOscillator();
+    const depth = context.createGain();
+    swell.frequency.value = .12;
+    depth.gain.value = .42;
+    swell.connect(depth).connect(level.gain);
+    swell.start();
+  }
+  source.start();
+}
+
+async function changeSound(play) {
+  $("music-play-btn").disabled = soundType.disabled = true;
+  try {
+    clearInterval(soundLoop);
+    if (audio) await audio.close();
+    audio = null;
+    if (play) {
+      audio = new AudioContext();
+      await audio.resume();
+      gain = audio.createGain();
+      gain.gain.value = Number(volume.value);
+      gain.connect(audio.destination);
+      const kind = soundType.value;
+      if (kind === "chords" || kind === "bells") playTones(audio,gain,kind === "bells");
+      else playNoise(audio,gain,kind);
+    }
+    $("audio-status").textContent = "";
+  } catch {
+    if (audio && audio.state !== "closed") await audio.close();
+    audio = null;
+    $("audio-status").textContent = "Sound could not start. Try playing again.";
+  } finally {
+    $("music-play-btn").textContent = audio ? "Stop sound" : "Play sound";
+    $("music-play-btn").disabled = soundType.disabled = false;
+  }
+}
+$("music-play-btn").onclick = () => changeSound(!audio);
+soundType.onchange = () => {
+  localStorage.setItem("studySound",soundType.value);
+  if (audio) changeSound(true);
+};
+volume.oninput = () => {
+  localStorage.setItem("studyVolume",volume.value);
+  if (audio && gain) gain.gain.setTargetAtTime(Number(volume.value),audio.currentTime,.03);
+};
             // --- Initial Load ---
             loadDailyAffirmation();
             updateTimerDisplay();
